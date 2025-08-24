@@ -24,8 +24,8 @@ if (!AUTH_KEY) {
 const pool = mysql.createPool({
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'heartrate_monitor',
+    password: process.env.DB_PASSWORD || '94t£eo/nJl95',
+    database: process.env.DB_NAME || 'smartbugle',
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -332,7 +332,7 @@ app.get('/api/heart-rate/live/:userId', authenticateToken, async (req, res) => {
  */
 app.get('/api/heart-rate/history/:userId', authenticateToken, async (req, res) => {
     const { userId } = req.params;
-    const { startDate, endDate, limit = 100, page = 1 } = req.query;
+    let { startDate, endDate, limit = 100, page = 1 } = req.query;
     
     if (!userId) {
         return res.status(400).json({ 
@@ -340,6 +340,11 @@ app.get('/api/heart-rate/history/:userId', authenticateToken, async (req, res) =
             message: 'userId is required' 
         });
     }
+
+    // Convert limit and page to numbers
+    limit = parseInt(limit);
+    page = parseInt(page);
+    const offset = (page - 1) * limit;
 
     try {
         // Build query
@@ -360,8 +365,7 @@ app.get('/api/heart-rate/history/:userId', authenticateToken, async (req, res) =
 
         // Add ordering and pagination
         query += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
-        const offset = (parseInt(page) - 1) * parseInt(limit);
-        queryParams.push(parseInt(limit), offset);
+        queryParams.push(limit, offset);
         
         // Get heart rate records
         const [heartRates] = await pool.execute(query, queryParams);
@@ -389,8 +393,8 @@ app.get('/api/heart-rate/history/:userId', authenticateToken, async (req, res) =
             status: 'success',
             data: heartRates,
             pagination: {
-                page: parseInt(page),
-                limit: parseInt(limit),
+                page: page,
+                limit: limit,
                 totalCount,
                 totalPages
             }
@@ -532,7 +536,7 @@ app.post('/api/fall-detection', authenticateToken, async (req, res) => {
  */
 app.get('/api/fall-detection/history/:userId', authenticateToken, async (req, res) => {
     const { userId } = req.params;
-    const { startDate, endDate, limit = 100, page = 1 } = req.query;
+    let { startDate, endDate, limit = 100, page = 1 } = req.query;
     
     if (!userId) {
         return res.status(400).json({ 
@@ -540,6 +544,11 @@ app.get('/api/fall-detection/history/:userId', authenticateToken, async (req, re
             message: 'userId is required' 
         });
     }
+
+    // Convert limit and page to numbers
+    limit = parseInt(limit);
+    page = parseInt(page);
+    const offset = (page - 1) * limit;
 
     try {
         // Build query
@@ -560,8 +569,7 @@ app.get('/api/fall-detection/history/:userId', authenticateToken, async (req, re
 
         // Add ordering and pagination
         query += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
-        const offset = (parseInt(page) - 1) * parseInt(limit);
-        queryParams.push(parseInt(limit), offset);
+        queryParams.push(limit, offset);
         
         // Get fall detection records
         const [fallDetections] = await pool.execute(query, queryParams);
@@ -589,8 +597,8 @@ app.get('/api/fall-detection/history/:userId', authenticateToken, async (req, re
             status: 'success',
             data: fallDetections,
             pagination: {
-                page: parseInt(page),
-                limit: parseInt(limit),
+                page: page,
+                limit: limit,
                 totalCount,
                 totalPages
             }
