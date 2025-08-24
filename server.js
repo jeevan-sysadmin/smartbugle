@@ -26,6 +26,7 @@ const pool = mysql.createPool({
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '94t£eo/nJl95',
     database: process.env.DB_NAME || 'smartbugle',
+    port: process.env.DB_PORT || 3306,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -531,12 +532,12 @@ app.post('/api/fall-detection', authenticateToken, async (req, res) => {
 });
 
 /**
- * Fall Detection History API
+ * Fall Detection History API - FIXED
  * Returns historical fall detection data for a user
  */
 app.get('/api/fall-detection/history/:userId', authenticateToken, async (req, res) => {
     const { userId } = req.params;
-    let { startDate, endDate, limit = 100, page = 1 } = req.query;
+    let { startDate, endDate, limit = 10, page = 1 } = req.query;
     
     if (!userId) {
         return res.status(400).json({ 
@@ -551,20 +552,31 @@ app.get('/api/fall-detection/history/:userId', authenticateToken, async (req, re
     const offset = (page - 1) * limit;
 
     try {
+        // Check if user exists
+        const [users] = await pool.execute(
+            'SELECT id FROM users WHERE id = ?',
+            [userId]
+        );
+
+        if (users.length === 0) {
+            return res.status(404).json({ 
+                status: 'error', 
+                message: 'User not found' 
+            });
+        }
+
         // Build query
-        let query = 'SELECT direction, severity, timestamp FROM fall_detections WHERE user_id = ?';
+        let query = 'SELECT id, direction, severity, timestamp FROM fall_detections WHERE user_id = ?';
         let queryParams = [userId];
         
         // Add date range if provided
-        if (startDate || endDate) {
-            if (startDate) {
-                query += ' AND timestamp >= ?';
-                queryParams.push(new Date(startDate));
-            }
-            if (endDate) {
-                query += ' AND timestamp <= ?';
-                queryParams.push(new Date(endDate));
-            }
+        if (startDate) {
+            query += ' AND timestamp >= ?';
+            queryParams.push(new Date(startDate));
+        }
+        if (endDate) {
+            query += ' AND timestamp <= ?';
+            queryParams.push(new Date(endDate));
         }
 
         // Add ordering and pagination
@@ -578,15 +590,13 @@ app.get('/api/fall-detection/history/:userId', authenticateToken, async (req, re
         let countQuery = 'SELECT COUNT(*) as totalCount FROM fall_detections WHERE user_id = ?';
         let countParams = [userId];
         
-        if (startDate || endDate) {
-            if (startDate) {
-                countQuery += ' AND timestamp >= ?';
-                countParams.push(new Date(startDate));
-            }
-            if (endDate) {
-                countQuery += ' AND timestamp <= ?';
-                countParams.push(new Date(endDate));
-            }
+        if (startDate) {
+            countQuery += ' AND timestamp >= ?';
+            countParams.push(new Date(startDate));
+        }
+        if (endDate) {
+            countQuery += ' AND timestamp <= ?';
+            countParams.push(new Date(endDate));
         }
         
         const [countResult] = await pool.execute(countQuery, countParams);
