@@ -263,8 +263,8 @@ app.get('/api/heart-rate/history/:userId', async (req, res) => {
             params.push(new Date(endDate));
         }
 
-        query += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
-        params.push(limit, offset);
+        // ⚡ FIX: Inject limit & offset as raw integers
+        query += ` ORDER BY timestamp DESC LIMIT ${limit} OFFSET ${offset}`;
 
         const [heartRates] = await pool.execute(query, params);
 
@@ -286,18 +286,14 @@ app.get('/api/heart-rate/history/:userId', async (req, res) => {
         res.json({
             status: 'success',
             data: heartRates,
-            pagination: {
-                page,
-                limit,
-                totalCount,
-                totalPages
-            }
+            pagination: { page, limit, totalCount, totalPages }
         });
     } catch (error) {
         console.error('Heart rate history error:', error);
         res.status(500).json({ status: 'error', message: 'Failed to fetch heart rate history' });
     }
 });
+
 
 /**
  * GET /api/heart-rate/stats/:userId
@@ -432,12 +428,12 @@ app.get('/api/fall-detection/history/:userId', async (req, res) => {
             params.push(new Date(endDate));
         }
 
-        query += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
-        params.push(limit, offset);
+        // ⚡ FIX: use integers directly
+        query += ` ORDER BY timestamp DESC LIMIT ${limit} OFFSET ${offset}`;
 
         const [fallDetections] = await pool.execute(query, params);
 
-        // count
+        // Count query
         let countQuery = 'SELECT COUNT(*) as totalCount FROM fall_detections WHERE user_id = ?';
         const countParams = [userId];
         if (startDate) {
@@ -462,6 +458,7 @@ app.get('/api/fall-detection/history/:userId', async (req, res) => {
         res.status(500).json({ status: 'error', message: 'Failed to fetch fall detection history' });
     }
 });
+
 
 /**
  * POST /api/test-data/:userId
